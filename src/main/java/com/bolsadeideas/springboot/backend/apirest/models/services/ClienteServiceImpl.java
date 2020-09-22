@@ -39,7 +39,7 @@ public class ClienteServiceImpl implements IClienteService{
 	@Transactional(readOnly = true)
 	public Cliente findbyId(Long id) {
 	
-		return clienteDao.findById(id).orElseGet(null);
+		return clienteDao.findById(id).orElse(null);
 	}
 
 	
