@@ -32,7 +32,7 @@ public class Cliente implements Serializable {
 	@NotEmpty(message="no puede esta vacío")
 	private String apellido;
 	
-	@Column(nullable=false, unique=true)
+	@Column(nullable=false, unique=false)
 	@NotEmpty(message="no puede esta vacío")
 	@Email(message="no es una direccion de correo correcta")
 	private String email;
