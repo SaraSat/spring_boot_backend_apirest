@@ -3,15 +3,11 @@ package com.bolsadeideas.springboot.backend.apirest.controllers;
 
 
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
@@ -40,6 +36,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.bolsadeideas.springboot.backend.apirest.models.entity.Cliente;
 import com.bolsadeideas.springboot.backend.apirest.models.services.IClienteService;
+import com.bolsadeideas.springboot.backend.apirest.models.services.IUuploadFileService;
+
 import ch.qos.logback.classic.LoggerContext;
 
 
@@ -50,6 +48,9 @@ public class ClienteRestController {
 
 	@Autowired
 	private IClienteService clienteService;
+	
+	@Autowired
+	private IUuploadFileService uploadService;
 	
 
 	LoggerContext context = new LoggerContext();
@@ -178,13 +179,7 @@ public class ClienteRestController {
 		
 		String fotoAnterior = cliente.getFoto();
 		
-		if(fotoAnterior !=null && fotoAnterior.length()>0) {
-			java.nio.file.Path rutaAnterior = Paths.get("uploads").resolve(fotoAnterior).toAbsolutePath();
-			File archivoAterior = rutaAnterior.toFile();
-			if(archivoAterior.exists() && archivoAterior.canRead()) {
-				archivoAterior.delete();
-			}
-		}
+		uploadService.eliminar(fotoAnterior);
 		
 		try {
 			clienteService.delete(id);
@@ -208,12 +203,9 @@ public class ClienteRestController {
 		Cliente cliente = clienteService.findbyId(id);
 		
 		if(!archivo.isEmpty()) {
-			String nombreArchivo = UUID.randomUUID().toString() + "_"+ archivo.getOriginalFilename().replace(" ", "");
-			java.nio.file.Path rutaArchivo= Paths.get("uploads").resolve(nombreArchivo).toAbsolutePath();
-			log.info(rutaArchivo.toString());
-			
+			String nombreArchivo = null;
 			try {
-				Files.copy(archivo.getInputStream(), rutaArchivo);
+				nombreArchivo = uploadService.copiar(archivo);
 			} catch (IOException e) {
 				
 				response.put("mensaje", "Error al subir la foto en la base de datos");
@@ -223,13 +215,7 @@ public class ClienteRestController {
 			
 			String fotoAnterior = cliente.getFoto();
 			
-			if(fotoAnterior !=null && fotoAnterior.length()>0) {
-				java.nio.file.Path rutaAnterior = Paths.get("uploads").resolve(fotoAnterior).toAbsolutePath();
-				File archivoAterior = rutaAnterior.toFile();
-				if(archivoAterior.exists() && archivoAterior.canRead()) {
-					archivoAterior.delete();
-				}
-			}
+			uploadService.eliminar(fotoAnterior);
 			
 			cliente.setFoto(nombreArchivo);
 			clienteService.save(cliente);
@@ -243,19 +229,12 @@ public class ClienteRestController {
 	@GetMapping("/uploads/img/{nombreFoto:.+}")
 	public ResponseEntity<?> verFoto(@PathVariable String nombreFoto){
 		
-		java.nio.file.Path rutaArchivo = Paths.get("uploads").resolve(nombreFoto).toAbsolutePath();
-		log.info(rutaArchivo.toString());
 		org.springframework.core.io.Resource recurso = null;
 		
 		try {
-			recurso = new org.springframework.core.io.UrlResource(rutaArchivo.toUri());
+			recurso = uploadService.cargar(nombreFoto);
 		} catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		
-		if(!recurso.exists() && !recurso.isReadable()) {
-			throw new RuntimeException("Error, no se pudo cargar la imagen: "+ nombreFoto);
 		}
 		
 		HttpHeaders cabecera = new HttpHeaders();
